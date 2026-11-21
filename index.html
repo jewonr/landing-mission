@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>행성 착륙 미션 — 100억으로 우주선 꾸리기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <p class="kicker">MISSION CONTROL</p>
+    <h1>행성 착륙 미션</h1>
+  </div>
+  <div class="record" id="record">
+    <div><span>누적 보상</span><b id="recTotal">0억</b></div>
+    <div><span>성공 / 도전</span><b id="recWins">0 / 0</b></div>
+  </div>
+</header>
+
+<!-- ───────── 1. 미션 준비 ───────── -->
+<main class="screen" id="prep">
+  <div class="prep-main">
+
+    <section class="panel">
+      <h2><span class="num">1</span>목표 행성</h2>
+      <div class="planets" id="planetList"></div>
+      <div class="custom" id="customBox" hidden>
+        <label class="slider"><span class="row"><span>중력가속도</span><output id="oCg"></output></span>
+          <input type="range" id="cG" min="0.5" max="30" step="0.1"></label>
+        <label class="slider"><span class="row"><span>대기 밀도 <em>(지구 = 1)</em></span><output id="oCa"></output></span>
+          <input type="range" id="cA" min="0" max="100" step="1"></label>
+        <label class="slider"><span class="row"><span>여정 기간</span><output id="oCd"></output></span>
+          <input type="range" id="cD" min="1" max="200" step="1"></label>
+      </div>
+      <div class="planet-detail" id="planetDetail"></div>
+    </section>
+
+    <section class="panel">
+      <h2><span class="num">2</span>선체 재료</h2>
+      <div class="materials" id="matList"></div>
+      <p class="hint">막대는 재료끼리 비교한 값이에요. <b>무게</b>와 <b>고장</b>은 짧을수록 좋아요.</p>
+    </section>
+
+    <section class="panel">
+      <h2><span class="num">3</span>선원</h2>
+      <div class="crew-row">
+        <div class="stepper">
+          <button type="button" id="crewMinus" aria-label="선원 줄이기">−</button>
+          <b id="crewNum">3</b><span>명</span>
+          <button type="button" id="crewPlus" aria-label="선원 늘리기">+</button>
+        </div>
+        <div class="crew-icons" id="crewIcons"></div>
+      </div>
+      <p class="hint" id="crewInfo"></p>
+    </section>
+
+    <section class="panel">
+      <h2><span class="num">4</span>보급품</h2>
+      <div class="supply">
+        <label class="slider"><span class="row"><span>산소</span><output id="oO2"></output></span>
+          <input type="range" id="sO2" min="0" max="4000" step="10"></label>
+        <div class="days-bar"><i id="barO2"></i><span id="dO2"></span><button type="button" class="mini" data-fill="o2">여정 + 20%로 채우기</button></div>
+      </div>
+      <div class="supply">
+        <label class="slider"><span class="row"><span>음식·물</span><output id="oFood"></output></span>
+          <input type="range" id="sFood" min="0" max="8000" step="10"></label>
+        <div class="days-bar"><i id="barFood"></i><span id="dFood"></span><button type="button" class="mini" data-fill="food">여정 + 20%로 채우기</button></div>
+      </div>
+      <div class="supply kits">
+        <div class="row"><span>수리도구</span>
+          <div class="stepper small">
+            <button type="button" id="kitMinus" aria-label="수리도구 줄이기">−</button>
+            <b id="kitNum">0</b><span>개</span>
+            <button type="button" id="kitPlus" aria-label="수리도구 늘리기">+</button>
+          </div>
+        </div>
+        <p class="hint" id="kitInfo"></p>
+      </div>
+      <p class="hint">한 사람이 하루에 산소 1 kg, 음식·물 2 kg을 써요. 산소가 떨어지면 선원이 모두 숨지고, 음식이 떨어지면 3일 뒤부터 하루에 한 명씩 숨져요.</p>
+    </section>
+
+    <section class="panel">
+      <h2><span class="num">5</span>연료</h2>
+      <label class="slider"><span class="row"><span>로켓 연료</span><output id="oFuel"></output></span>
+        <input type="range" id="sFuel" min="0" max="80" step="0.5"></label>
+      <div class="fuel-info" id="fuelInfo"></div>
+      <p class="hint">여정 중에는 궤도를 고치느라 하루 30 kg씩 쓰고, 나머지로 착륙할 때 속도를 줄여요. 연료가 없으면 추락해요.</p>
+    </section>
+  </div>
+
+  <aside class="prep-side">
+    <div class="budget panel">
+      <div class="budget-head">
+        <span>남은 예산</span>
+        <b id="left">100억</b>
+      </div>
+      <div class="budget-bar" id="budgetBar"></div>
+      <ul class="receipt" id="receipt"></ul>
+      <div class="receipt-total"><span>합계</span><b id="spent">0억</b><span class="of">/ 100억</span></div>
+    </div>
+
+    <div class="panel summary">
+      <dl id="summary"></dl>
+      <ul class="warnings" id="warnings"></ul>
+    </div>
+
+    <div class="panel">
+      <h3>착륙 방식</h3>
+      <div class="mode" role="group" aria-label="착륙 방식">
+        <button type="button" class="seg" data-mode="manual">직접 조종</button>
+        <button type="button" class="seg" data-mode="auto">자동 조종</button>
+      </div>
+      <p class="hint" id="modeHint"></p>
+      <button type="button" class="btn launch" id="launch">발사!</button>
+    </div>
+  </aside>
+</main>
+
+<!-- ───────── 2. 여정 + 착륙 ───────── -->
+<main class="screen" id="flight" hidden>
+  <div class="flight-stage">
+    <canvas id="view"></canvas>
+
+    <div class="hud-top" id="hudTravel">
+      <div class="g"><span>여정</span><b id="tDay">D+0</b><i id="tDays">/ 0일</i></div>
+      <div class="g"><span>목적지</span><b id="tDest">-</b></div>
+    </div>
+
+    <div class="hud-top" id="hudLand" hidden>
+      <div class="g"><span>고도</span><b id="lAlt">0</b><i id="lAltU">m</i></div>
+      <div class="g"><span>하강 속도</span><b id="lSpd">0</b><i>m/s</i></div>
+      <div class="g" id="gTemp"><span>표면 온도</span><b id="lTemp">0</b><i id="lTempLim">℃</i></div>
+      <div class="g" id="gPress"><span>바깥 기압</span><b id="lPress">0</b><i id="lPressLim">atm</i></div>
+    </div>
+
+    <div class="ticker" id="ticker" aria-live="polite"></div>
+
+    <div class="overlay" id="landReady" hidden>
+      <div class="card">
+        <p class="kicker" id="readyKicker">ARRIVED</p>
+        <h2 id="readyTitle">착륙 준비</h2>
+        <p id="readyText"></p>
+        <ul class="howto">
+          <li><kbd>스페이스</kbd> 또는 <kbd>↑</kbd>를 누르고 있으면 엔진이 켜져요. 화면의 <b>엔진</b> 버튼을 눌러도 돼요.</li>
+          <li><kbd>A</kbd> 키나 <b>자동 조종</b> 버튼으로 언제든 직접 조종 ↔ 자동 조종을 바꿀 수 있어요.</li>
+          <li>땅에 닿을 때 속도가 <b id="readySafe">0</b> m/s 이하면 안전해요.</li>
+        </ul>
+        <div class="mode" role="group" aria-label="착륙 방식">
+          <button type="button" class="seg" data-mode="manual">직접 조종</button>
+          <button type="button" class="seg" data-mode="auto">자동 조종</button>
+        </div>
+        <button type="button" class="btn launch" id="startDescent">하강 시작</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="result" hidden>
+      <div class="card result-card">
+        <p class="kicker" id="resKicker"></p>
+        <h2 id="resTitle"></h2>
+        <p id="resText"></p>
+        <div class="res-reward" id="resReward"></div>
+        <dl class="res-grid" id="resGrid"></dl>
+        <p class="tip" id="resTip"></p>
+        <div class="res-btns">
+          <button type="button" class="btn" id="retry">같은 설정으로 다시</button>
+          <button type="button" class="btn launch" id="backPrep">우주선 다시 꾸리기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="flight-side">
+    <div class="panel status">
+      <h3>우주선 상태</h3>
+      <div class="meter" id="mHp"><div class="row"><span>선체 내구도</span><b></b></div><div class="bar"><i></i></div></div>
+      <div class="meter" id="mFuel"><div class="row"><span>연료</span><b></b></div><div class="bar"><i></i></div></div>
+      <div class="meter" id="mO2"><div class="row"><span>산소</span><b></b></div><div class="bar"><i></i></div></div>
+      <div class="meter" id="mFood"><div class="row"><span>음식·물</span><b></b></div><div class="bar"><i></i></div></div>
+      <div class="facts">
+        <div><span>수리도구</span><b id="fKits">0</b></div>
+        <div><span>엔진 추력</span><b id="fEngine">100%</b></div>
+      </div>
+      <div class="crew-icons small" id="fCrew"></div>
+    </div>
+
+    <div class="panel controls" id="travelCtl">
+      <h3>여정 속도</h3>
+      <div class="mode" role="group" aria-label="여정 속도">
+        <button type="button" class="seg" data-tspeed="1">보통</button>
+        <button type="button" class="seg" data-tspeed="3">빠르게</button>
+        <button type="button" class="seg" data-tspeed="20">아주 빠르게</button>
+      </div>
+    </div>
+
+    <div class="panel controls" id="landCtl" hidden>
+      <button type="button" class="btn engine" id="engineBtn">엔진<small>누르고 있기</small></button>
+      <button type="button" class="btn" id="autoBtn">자동 조종 켜기 <kbd>A</kbd></button>
+      <div class="warp">
+        <span>배속</span>
+        <button type="button" class="chip" data-warp="auto">자동</button>
+        <button type="button" class="chip" data-warp="1">×1</button>
+        <button type="button" class="chip" data-warp="2">×2</button>
+        <button type="button" class="chip" data-warp="5">×5</button>
+        <b id="warpNow"></b>
+      </div>
+    </div>
+
+    <div class="panel log">
+      <h3>항해 일지</h3>
+      <ol id="log"></ol>
+    </div>
+  </aside>
+</main>
+
+<footer class="foot">코딩수업 · 행성 착륙 미션</footer>
+
+<script src="sim.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
