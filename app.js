@@ -14,7 +14,17 @@
   }
   function save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* 저장 불가 */ } }
 
-  const record = load(KEY_REC, { total: 0, wins: 0, tries: 0 });
+  const RECORD0 = { total: 0, wins: 0, tries: 0, wallet: S.START_BUDGET, reliefs: 0 };
+  const record = load(KEY_REC, RECORD0);
+  const round4 = x => Math.round(x * 1e4) / 1e4;
+
+  // 남은 예산으로 가장 싼 발사도 못 하면(사실상 0원) 지원금 100억을 넣어 준다.
+  function checkRelief() {
+    if (record.wallet >= S.minLaunchCost()) return false;
+    record.wallet = round4(record.wallet + S.RELIEF); record.reliefs++;
+    save(KEY_REC, record); showRecord();
+    return true;
+  }
   const st = load(KEY_CFG, {
     planetId: 'moon', custom: { g: 9.8, air: 1, days: 30 },
     material: 'steel', crew: 3, fuel: 10, o2: 20, food: 30, kits: 2, mode: 'manual',
@@ -122,6 +132,7 @@
   function refresh() {
     const c = cfg(), p = c.planet, info = S.planetInfo(p), mat = S.material(c.material);
     const cost = S.costOf(c), pv = S.preview(c);
+    const rw = S.rewardOf(info.reward, st.crew, cost.total);
     save(KEY_CFG, st);
 
     // 행성
@@ -140,7 +151,8 @@
         <span>여정<b>${p.days}일</b></span>
         <span>진입 속도<b>${Math.round(info.v0).toLocaleString()} m/s</b></span>
       </div>
-      <div class="reward-box"><span>착륙 성공 보상</span><b>${money(info.reward)}</b></div>
+      <div class="reward-box"><span>착륙 성공 기본 보상</span><b>${money(info.reward)}</b>
+        <span>${rw.saving > 0 ? `+ 절약 보너스 ${Math.round(rw.saveRate * 100)}%` : '절약 보너스 없음 (100억 이상 사용)'}</span></div>
       <div class="diff">난이도 <div class="track"><i style="width:${Math.max(3, info.difficulty * 100)}%"></i></div>${Math.round(info.difficulty * 100)}점</div>`;
 
     // 재료
@@ -184,11 +196,13 @@
       <div class="${twrArr < 1 ? 'bad' : twrArr < 1.5 ? '' : 'ok'}"><span>추력 ÷ 무게 (도착 때)</span><b>${fmtNum(twrArr, 2)}배</b></div>`;
 
     // 예산
-    const over = cost.total > S.BUDGET + 1e-9;
-    const left = S.BUDGET - cost.total;
+    const wallet = record.wallet;
+    const over = cost.total > wallet + 1e-9;
+    const left = wallet - cost.total;
     $('left').textContent = money(left); $('left').classList.toggle('over', over);
     $('spent').textContent = money(cost.total);
-    const denom = Math.max(S.BUDGET, cost.total);
+    $('ofBudget').textContent = `/ ${money(wallet)}`;
+    const denom = Math.max(wallet, cost.total);
     $('budgetBar').innerHTML = Object.keys(COST_NAMES).map(k =>
       `<i style="width:${cost[k] / denom * 100}%;background:${COST_COLORS[k]}" title="${COST_NAMES[k]}"></i>`).join('');
     const detail = {
@@ -203,10 +217,13 @@
       <dt>산소</dt><dd>${isFinite(pv.o2Days) ? Math.floor(pv.o2Days) : 0}일분</dd>
       <dt>음식·물</dt><dd>${isFinite(pv.foodDays) ? Math.floor(pv.foodDays) : 0}일분</dd>
       <dt>예상 고장</dt><dd>약 ${fmtNum(expBreak, 1)}회</dd>
-      <dt>성공 보상</dt><dd style="color:var(--yellow)">${money(info.reward)}</dd>`;
+      <dt>기본 보상</dt><dd>${money(rw.base)}</dd>
+      <dt>절약 보너스 (${Math.round(rw.saveRate * 100)}%)</dt><dd>+${money(rw.saving)}</dd>
+      <dt>탐사 보너스 (${st.crew}명 생존 시)</dt><dd>+${money(rw.crew)}</dd>
+      <dt>성공하면 최대</dt><dd style="color:var(--yellow)">${money(rw.total)}</dd>`;
 
     const W = [];
-    if (over) W.push(['stop', `예산을 ${money(-left)} 넘었어요. 무언가를 줄여야 발사할 수 있어요.`]);
+    if (over) W.push(['stop', `가진 예산(${money(wallet)})보다 ${money(-left)} 더 들어요. 무언가를 줄여야 발사할 수 있어요.`]);
     if (pv.o2Days < p.days) W.push(['warn', `산소가 ${Math.floor(pv.o2Days)}일분뿐이에요. 여정(${p.days}일) 중에 모두 숨져요.`]);
     if (pv.foodDays + S.STARVE_DAYS < p.days) W.push(['warn', `음식이 ${Math.floor(pv.foodDays)}일분뿐이에요. 도중에 굶어서 선원이 숨져요.`]);
     if (landFuel <= 0) W.push(['warn', '연료가 여정에 쓸 양보다 적어요. 도착하자마자 추락해요.']);
@@ -222,10 +239,11 @@
       ? '착륙할 때 엔진을 직접 켜고 꺼요. 일찍 감속하면 대기 마찰열을 줄일 수 있어요.'
       : '컴퓨터가 땅에 닿기 직전에 알아서 감속해요. 대신 마찰열은 신경 쓰지 않아요.';
     $('launch').disabled = over;
-    $('launch').textContent = over ? '예산 초과' : `발사! → ${p.name}`;
+    $('launch').textContent = over ? '예산 부족' : `발사! → ${p.name}`;
   }
 
   function showRecord() {
+    $('recWallet').textContent = money(record.wallet);
     $('recTotal').textContent = money(record.total);
     $('recWins').textContent = `${record.wins} / ${record.tries}`;
   }
@@ -262,13 +280,16 @@
 
   function launch() {
     const c = cfg();
-    if (S.costOf(c).total > S.BUDGET + 1e-9) return;
+    if (S.costOf(c).total > record.wallet + 1e-9) return;
     lastCfg = JSON.parse(JSON.stringify(st));
     startMission(c);
   }
 
   function startMission(c) {
+    const cost = S.costOf(c).total;
+    if (cost > record.wallet + 1e-9) return false;
     ms = S.createMission(c);
+    record.wallet = round4(record.wallet - cost);   // 발사할 때 비용을 낸다
     record.tries++; save(KEY_REC, record); showRecord();
     mode = 'travel'; dayClock = 0; autoOn = c.mode === 'auto'; engineDown = false; warpSel = 'auto';
     particles = []; shake = 0; flash = 0; endTimer = 0; warned = {};
@@ -487,13 +508,24 @@
     $('resTitle').textContent = e.ok ? `${ms.planet.name} 착륙 성공!` : '미션 실패';
     $('resText').textContent = e.text;
     if (e.ok) {
-      record.total += ms.reward.total; record.wins++; save(KEY_REC, record); showRecord();
+      const r = ms.reward;
+      record.total += r.total; record.wins++;
+      record.wallet = round4(record.wallet + r.total);
+      save(KEY_REC, record); showRecord();
       $('resReward').hidden = false;
-      $('resReward').innerHTML = `<span class="big">+${money(ms.reward.total)}</span>
-        <small>기본 보상 ${money(ms.reward.base)} + 탐사 보너스 ${money(ms.reward.bonus)} (생존 선원 ${ms.crewAlive}명 × 10%)</small>`;
+      $('resReward').innerHTML = `<span class="big">+${money(r.total)}</span>
+        <small>기본 보상 ${money(r.base)}<br>
+        + 절약 보너스 ${money(r.saving)} (${money(S.costOf(c).total)} 사용 → +${Math.round(r.saveRate * 100)}%)<br>
+        + 탐사 보너스 ${money(r.crew)} (생존 선원 ${ms.crewAlive}명 × 10%)</small>`;
     } else {
       $('resReward').hidden = true;
     }
+    const relief = checkRelief();
+    $('resRelief').hidden = !relief;
+    if (relief) $('resRelief').textContent = `예산이 바닥나서 지원금 ${money(S.RELIEF)}이 들어왔어요!`;
+    const canRetry = S.costOf(c).total <= record.wallet + 1e-9;
+    $('retry').disabled = !canRetry;
+    $('retry').textContent = canRetry ? `같은 설정으로 다시 (${money(S.costOf(c).total)})` : '같은 설정은 예산 부족';
     const rows = [
       ['행성', ms.planet.name], ['선체', ms.mat.name],
       ['생존 선원', `${ms.crewAlive} / ${ms.crew}명`], ['여정', `${ms.day} / ${ms.planet.days}일`],
@@ -503,7 +535,8 @@
       rows.push(['착지 속도', d.touchV ? `${fmtNum(d.touchV, 1)} m/s` : '-'], ['최고 온도', `${Math.round(d.maxTemp).toLocaleString()}℃`],
         ['최대 기압', `${fmtNum(d.maxPress, d.maxPress < 10 ? 2 : 0)}기압`], ['하강 시간', `${Math.round(d.t)}초`]);
     }
-    rows.push(['사용 예산', money(S.costOf(c).total)], ['남은 선체', `${Math.round(ms.hp / ms.hpMax * 100)}%`]);
+    rows.push(['사용 예산', money(S.costOf(c).total)], ['남은 선체', `${Math.round(ms.hp / ms.hpMax * 100)}%`],
+      ['보유 예산', money(record.wallet)]);
     $('resGrid').innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
     let tip = TIPS[e.code] || '';
     if (e.code === 'impact') {
@@ -782,6 +815,10 @@
   });
   document.querySelectorAll('[data-warp]').forEach(b => b.onclick = () => { warpSel = b.dataset.warp === 'auto' ? 'auto' : +b.dataset.warp; syncWarp(); });
   $('retry').onclick = () => { Object.assign(st, lastCfg); startMission(cfg()); };
+  $('resetAll').onclick = () => {
+    if (!confirm(`예산과 기록을 지우고 ${money(S.START_BUDGET)}으로 처음부터 시작할까요?`)) return;
+    Object.assign(record, RECORD0); save(KEY_REC, record); showRecord(); refresh();
+  };
   $('backPrep').onclick = () => {
     $('flight').hidden = true; $('prep').hidden = false; ms = null; refresh();
   };
@@ -796,6 +833,7 @@
   buildMaterials();
   bindPrep();
   refresh();
+  checkRelief();
   showRecord();
   requestAnimationFrame(frame);
 })();

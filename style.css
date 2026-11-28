@@ -52,6 +52,13 @@ h3 { font-size: 15px; color: var(--dim); font-weight: 700; }
 .record div { display: flex; flex-direction: column; align-items: flex-end; }
 .record span { font-size: 12px; color: var(--dim); }
 .record b { font-family: var(--mono); font-size: 18px; color: var(--yellow); }
+.record b.wallet { color: var(--green); }
+.record { align-items: center; }
+.mini.reset { color: var(--dim); }
+.reward-box span:last-child { margin-top: 2px; color: var(--green); }
+.relief { background: rgba(62,224,143,.12); border: 1px solid var(--green); color: #a8f5cc !important;
+  border-radius: 10px; padding: 8px 12px; font-weight: 700; }
+.res-btns .btn:disabled { opacity: .45; }
 .foot { text-align: center; color: var(--dim); font-size: 12px; padding: 24px; }
 
 .panel {

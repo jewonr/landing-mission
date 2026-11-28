@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>행성 착륙 미션 — 100억으로 우주선 꾸리기</title>
+<title>행성 착륙 미션 — 우주선 꾸리기</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
@@ -16,8 +16,10 @@
     <h1>행성 착륙 미션</h1>
   </div>
   <div class="record" id="record">
+    <div><span>보유 예산</span><b id="recWallet" class="wallet">200억</b></div>
     <div><span>누적 보상</span><b id="recTotal">0억</b></div>
     <div><span>성공 / 도전</span><b id="recWins">0 / 0</b></div>
+    <button type="button" class="mini reset" id="resetAll" title="예산과 기록을 처음 상태로">처음부터</button>
   </div>
 </header>
 
@@ -95,12 +97,13 @@
   <aside class="prep-side">
     <div class="budget panel">
       <div class="budget-head">
-        <span>남은 예산</span>
-        <b id="left">100억</b>
+        <span>발사 후 남는 예산</span>
+        <b id="left">200억</b>
       </div>
       <div class="budget-bar" id="budgetBar"></div>
       <ul class="receipt" id="receipt"></ul>
-      <div class="receipt-total"><span>합계</span><b id="spent">0억</b><span class="of">/ 100억</span></div>
+      <div class="receipt-total"><span>합계</span><b id="spent">0억</b><span class="of" id="ofBudget">/ 200억</span></div>
+      <p class="hint">발사할 때 비용을 내고, 성공하면 보상이 예산에 더해져요. <b>100억보다 적게 쓸수록</b> 절약 보너스가 커져요. 예산이 바닥나면 지원금 100억이 들어와요.</p>
     </div>
 
     <div class="panel summary">
@@ -163,6 +166,7 @@
         <h2 id="resTitle"></h2>
         <p id="resText"></p>
         <div class="res-reward" id="resReward"></div>
+        <p class="relief" id="resRelief" hidden></p>
         <dl class="res-grid" id="resGrid"></dl>
         <p class="tip" id="resTip"></p>
         <div class="res-btns">

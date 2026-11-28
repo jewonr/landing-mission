@@ -3,7 +3,9 @@
   'use strict';
 
   // ───── 기본 상수 ─────
-  const BUDGET = 100;            // 예산 (억 원)
+  const START_BUDGET = 200;      // 처음 받는 예산 (억 원)
+  const RELIEF = 100;            // 예산이 바닥나면 들어오는 지원금 (억 원)
+  const SAVE_REF = 100;          // 절약 보너스 기준: 이보다 적게 쓴 비율만큼 보상이 늘어난다 (억 원)
   const G0 = 9.80665;            // 표준 중력 (m/s²)
   const EARTH_G = 9.81;
   const EARTH_RHO = 1.225;       // 지구 해수면 대기 밀도 (kg/m³)
@@ -178,6 +180,17 @@
       apply: ms => { ms.engine *= 0.85; } },
   ];
 
+  // 가장 싸게 발사하는 비용: 가장 싼 재료 + 선원 1명. 남은 예산이 이보다 적으면 사실상 0원.
+  function minLaunchCost() { return Math.min(...MATERIALS.map(m => m.cost)) + PRICE.crew; }
+
+  // 보상 계산: 기본 + 탐사 보너스(생존 선원 1명당 10%) + 절약 보너스(100억보다 적게 쓴 비율만큼)
+  function rewardOf(base, crewAlive, cost) {
+    const crew = niceRound(base * 0.1 * crewAlive) || 0;
+    const saveRate = Math.max(0, (SAVE_REF - cost) / SAVE_REF);
+    const saving = niceRound(base * saveRate) || 0;
+    return { base, crew, saving, saveRate, total: base + crew + saving };
+  }
+
   function repairChance(crewAlive) { return Math.min(0.95, 0.5 + 0.1 * crewAlive); }
 
   // 하루 진행. 일어난 일들을 [{type, text}] 로 돌려준다.
@@ -346,9 +359,7 @@
         finish(ms, false, 'impact', `초속 ${vt.toFixed(1)} m로 땅에 부딪혀 우주선이 부서졌어요.${fuelOut}`);
         return 'crashed';
       }
-      const bonus = 0.1 * ms.crewAlive;
-      ms.reward = { base: ms.info.reward, bonus: niceRound(ms.info.reward * bonus) || 0 };
-      ms.reward.total = ms.reward.base + ms.reward.bonus;
+      ms.reward = rewardOf(ms.info.reward, ms.crewAlive, costOf(ms.cfg).total);
       finish(ms, true, 'landed', vt <= safe ? '사뿐히 착륙했어요!' : '쿵! 조금 거칠었지만 착륙에 성공했어요.');
       return 'landed';
     }
@@ -393,10 +404,10 @@
   }
 
   const API = {
-    BUDGET, THRUST, ISP, MDOT, PRICE, MASS, RATE, LIMITS, FUEL_PER_DAY, STARVE_DAYS, SCALE_H,
+    START_BUDGET, RELIEF, SAVE_REF, THRUST, ISP, MDOT, PRICE, MASS, RATE, LIMITS, FUEL_PER_DAY, STARVE_DAYS, SCALE_H,
     MATERIALS, PLANETS, CUSTOM_RANGE, BREAKDOWNS,
     material, planetInfo, surfacePressure, entrySpeed, difficulty, reward, niceRound,
-    costOf, dryMass, totalMass, preview, repairChance,
+    costOf, dryMass, totalMass, preview, repairChance, minLaunchCost, rewardOf,
     createMission, travelDay, startDescent, descentStep, autopilot, massNow, runMission, fmtMoney,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
